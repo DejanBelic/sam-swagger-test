@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: nodejs10.x
+    Timeout: 60
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: The name of the S3 bucket in which the Swagger specification is stored
+  StageName:
+    Type: String
+    Description: The name of the stage, e.g. "dev", "preprod", "prod"
+    Default: dev
+Resources:
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Fn::Sub: todo-app-api-${StageName}
+      StageName:
+        Ref: StageName
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Fn::Join:
+              - ''
+              - - s3://
+                - Ref: S3BucketName
+                - /swagger.yaml
+  ListTasksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: todo-app-${StageName}-list-tasks
+      CodeUri: s3://samrain/c5f0dfd26df128e9baac7a553acb2305
+      Handler: index.listTasks
+    Events:
+      Get:
+        Type: Api
+        Properties:
+          RestApiId:
+            Ref: RestApi
+          Path: /
+          Method: GET

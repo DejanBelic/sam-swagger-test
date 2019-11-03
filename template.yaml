@@ -1,0 +1,92 @@
+#AWSTemplateFormatVersion: '2010-09-09'
+#Transform: AWS::Serverless-2016-10-31
+#Description: >
+#  samsunday
+#
+#  Sample SAM Template for samsunday
+#
+## More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+#Globals:
+#  Function:
+#    Timeout: 3
+#
+#Resources:
+#  HelloWorldFunction:
+#    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+#    Properties:
+#      CodeUri: hello-world/
+#      Handler: app.lambdaHandler
+#      Runtime: nodejs10.x
+#      Events:
+#        HelloWorld:
+#          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+#          Properties:
+#            Path: /hello
+#            Method: get
+#
+#Outputs:
+#  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+#  # Find out more about other implicit resources you can reference within SAM
+#  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+#  HelloWorldApi:
+#    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+#    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+#  HelloWorldFunction:
+#    Description: "Hello World Lambda Function ARN"
+#    Value: !GetAtt HelloWorldFunction.Arn
+#  HelloWorldFunctionIamRole:
+#    Description: "Implicit IAM Role created for Hello World function"
+#    Value: !GetAtt HelloWorldFunctionRole.Arn
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Runtime: nodejs10.x
+    Timeout: 60
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: The name of the S3 bucket in which the Swagger specification is stored
+  StageName:
+    Type: String
+    Description: The name of the stage, e.g. "dev", "preprod", "prod"
+    Default: dev
+
+Resources:
+
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Fn::Sub: todo-app-api-${StageName}
+      StageName:
+        Ref: StageName
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Fn::Join:
+                - ''
+                - - 's3://'
+                  - Ref: S3BucketName
+                  - '/swagger.yaml'
+
+  ListTasksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: todo-app-${StageName}-list-tasks
+      CodeUri: ./src
+      Handler: index.listTasks
+    Events:
+      Get:
+        Type: Api
+        Properties:
+          RestApiId:
+            Ref: RestApi
+          Path: /
+          Method: GET
